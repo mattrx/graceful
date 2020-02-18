@@ -163,3 +163,30 @@ func TestRunContextWithRegisteredMiddlewares(t *testing.T) {
 	graceful.Wait()
 	graceful.ClearMiddlewares()
 }
+
+func TestRecoveryMiddleware(t *testing.T) {
+
+	panicRecovered := false
+
+	graceful.AddMiddleware(func(next func(context.Context)) func(context.Context) {
+		return func(ctx context.Context) {
+			defer func() {
+				if err := recover(); err != nil {
+					panicRecovered = true
+				}
+			}()
+
+			next(ctx)
+		}
+	})
+
+	graceful.Run(func() {
+		panic("Expected")
+	})
+
+	graceful.Wait()
+
+	if !panicRecovered {
+		t.Fatalf("Expected to recover from panic")
+	}
+}

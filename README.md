@@ -86,6 +86,26 @@ graceful.AddMiddleware(func(next func(context.Context)) func(context.Context) {
 })
 ```
 
+#### Example: Middleware to recover from Panics in Go Routines
+
+```golang
+import (
+	"github.com/mattrx/graceful"
+)
+
+graceful.AddMiddleware(func(next func(context.Context)) func(context.Context) {
+    return func(ctx context.Context) {
+        defer func() {
+            if err := recover(); err != nil {
+                // handle panic as you see fit
+            }
+        }()
+
+        next(ctx)
+    }
+})
+```
+
 ## <a name="cleanup-funcs"></a>Cleanup after Shutdown
 
 After shutting down you may want to run some cleanup functions to close connections or flush some internal memory buffer. You can run them like this:
