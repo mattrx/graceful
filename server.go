@@ -2,29 +2,36 @@ package graceful
 
 import (
 	"context"
-	"log"
+	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 )
 
+var signalChan = make(chan os.Signal)
+
 // ListenAndServe on the server with graceful shutdown
 func ListenAndServe(server *http.Server) error {
 
-	signalChan := make(chan os.Signal)
 	signal.Notify(signalChan, syscall.SIGTERM)
 	signal.Notify(signalChan, syscall.SIGINT)
 
-	go func() {
-		sig := <-signalChan
-		log.Printf("Signal received: %+v\n", sig)
+	shutdownChan := make(chan struct{})
 
-		log.Println("Shutting down server...")
+	go func() {
+		<-signalChan
+
 		if err := server.Shutdown(context.Background()); err != nil {
-			log.Println("Could not shut down server: ", err)
+			panic(fmt.Errorf("Could not shut down server: %w", err))
 		}
+
+		shutdownChan <- struct{}{}
 	}()
 
-	return server.ListenAndServe()
+	err := server.ListenAndServe()
+
+	<-shutdownChan
+
+	return err
 }
